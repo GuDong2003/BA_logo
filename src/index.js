@@ -215,6 +215,8 @@ class lt {
     constructor() {
         R(this, "canvas");
         R(this, "ctx");
+        R(this, "offscreenCanvas");
+        R(this, "offscreenCtx");
         R(this, "textL", "Blue");
         R(this, "textR", "Archive");
         R(this, "textMetricsL", null);
@@ -225,56 +227,87 @@ class lt {
         R(this, "textWidthR", 0);
         R(this, "graphOffset", te);
         R(this, "transparentBg", !1);
+        R(this, "scale", 1);
+        R(this, "baseHeight", N);
+        R(this, "baseWidth", $);
+        R(this, "baseFontSize", ot);
         this.canvas = document.querySelector("#canvas"),
         this.ctx = this.canvas.getContext("2d"),
-        this.canvas.height = N,
-        this.canvas.width = $,
-        this.bindEvent()
+        // 创建离屏画布用于高分辨率绘制
+        this.offscreenCanvas = document.createElement("canvas"),
+        this.offscreenCtx = this.offscreenCanvas.getContext("2d"),
+        this.bindEvent(),
+        this.updateResolutionDisplay(),
+        this.draw()
     }
     async draw() {
         const e = document.querySelector("#loading");
         e.classList.remove("hidden");
-        const t = this.ctx;
+        
+        // 根据缩放比例计算实际参数，用于离屏画布绘制
+        const scaledHeight = Math.round(this.baseHeight * this.scale);
+        const scaledWidth = Math.round(this.baseWidth * this.scale);
+        const scaledFontSize = this.baseFontSize * this.scale;
+        const scaledLineWidth = 12 * this.scale;
+        
+        // 保持显示画布固定大小
+        this.canvas.height = this.baseHeight;
+        this.canvas.width = this.baseWidth;
+        
+        // 更新离屏画布大小
+        this.offscreenCanvas.height = scaledHeight;
+        this.offscreenCanvas.width = scaledWidth;
+        
+        // 更新字体样式
+        const scaledFont = `${scaledFontSize}px RoGSanSrfStd-Bd, GlowSansSC-Normal-Heavy_diff, apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif`;
+        
+        // 在离屏画布上绘制
+        const offscreenCtx = this.offscreenCtx;
         await at(this.textL + this.textR),
         e.classList.add("hidden"),
-        t.font = ce,
-        this.textMetricsL = t.measureText(this.textL),
-        this.textMetricsR = t.measureText(this.textR),
+        offscreenCtx.font = scaledFont,
+        this.textMetricsL = offscreenCtx.measureText(this.textL),
+        this.textMetricsR = offscreenCtx.measureText(this.textR),
         this.setWidth(),
-        t.clearRect(0, 0, this.canvas.width, this.canvas.height),
-        this.transparentBg || (t.fillStyle = "#fff",
-        t.fillRect(0, 0, this.canvas.width, this.canvas.height)),
-        t.font = ce,
-        t.fillStyle = "#128AFA",
-        t.textAlign = "end",
-        t.setTransform(1, 0, H, 1, 0, 0),
-        t.fillText(this.textL, this.canvasWidthL, this.canvas.height * B),
-        t.resetTransform(),
-        t.drawImage(window.halo, this.canvasWidthL - this.canvas.height / 2 + this.graphOffset.X, this.graphOffset.Y, N, N),
-        t.fillStyle = "#2B2B2B",
-        t.textAlign = "start",
-        this.transparentBg && (t.globalCompositeOperation = "destination-out"),
-        t.strokeStyle = "white",
-        t.lineWidth = 12,
-        t.setTransform(1, 0, H, 1, 0, 0),
-        t.strokeText(this.textR, this.canvasWidthL, this.canvas.height * B),
-        t.globalCompositeOperation = "source-over",
-        t.fillText(this.textR, this.canvasWidthL, this.canvas.height * B),
-        t.resetTransform();
+        offscreenCtx.clearRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height),
+        this.transparentBg || (offscreenCtx.fillStyle = "#fff",
+        offscreenCtx.fillRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height)),
+        offscreenCtx.font = scaledFont,
+        offscreenCtx.fillStyle = "#128AFA",
+        offscreenCtx.textAlign = "end",
+        offscreenCtx.setTransform(1, 0, H, 1, 0, 0),
+        offscreenCtx.fillText(this.textL, this.canvasWidthL, this.offscreenCanvas.height * B),
+        offscreenCtx.resetTransform(),
+        offscreenCtx.drawImage(window.halo, this.canvasWidthL - this.offscreenCanvas.height / 2 + this.graphOffset.X * this.scale, this.graphOffset.Y * this.scale, scaledHeight, scaledHeight),
+        offscreenCtx.fillStyle = "#2B2B2B",
+        offscreenCtx.textAlign = "start",
+        this.transparentBg && (offscreenCtx.globalCompositeOperation = "destination-out"),
+        offscreenCtx.strokeStyle = "white",
+        offscreenCtx.lineWidth = scaledLineWidth,
+        offscreenCtx.setTransform(1, 0, H, 1, 0, 0),
+        offscreenCtx.strokeText(this.textR, this.canvasWidthL, this.offscreenCanvas.height * B),
+        offscreenCtx.globalCompositeOperation = "source-over",
+        offscreenCtx.fillText(this.textR, this.canvasWidthL, this.offscreenCanvas.height * B),
+        offscreenCtx.resetTransform();
         const n = {
-            X: this.canvasWidthL - this.canvas.height / 2 + te.X,
-            Y: this.graphOffset.Y
+            X: this.canvasWidthL - this.offscreenCanvas.height / 2 + te.X * this.scale,
+            Y: this.graphOffset.Y * this.scale
         };
-        t.beginPath(),
-        t.moveTo(n.X + z[0][0] / 500 * N, n.Y + z[0][1] / 500 * N);
+        offscreenCtx.beginPath(),
+        offscreenCtx.moveTo(n.X + z[0][0] / 500 * scaledHeight, n.Y + z[0][1] / 500 * scaledHeight);
         for (let i = 1; i < 4; i++)
-            t.lineTo(n.X + z[i][0] / 500 * N, n.Y + z[i][1] / 500 * N);
-        t.closePath(),
-        this.transparentBg && (t.globalCompositeOperation = "destination-out"),
-        t.fillStyle = "white",
-        t.fill(),
-        t.globalCompositeOperation = "source-over",
-        t.drawImage(window.cross, this.canvasWidthL - this.canvas.height / 2 + te.X, this.graphOffset.Y, N, N)
+            offscreenCtx.lineTo(n.X + z[i][0] / 500 * scaledHeight, n.Y + z[i][1] / 500 * scaledHeight);
+        offscreenCtx.closePath(),
+        this.transparentBg && (offscreenCtx.globalCompositeOperation = "destination-out"),
+        offscreenCtx.fillStyle = "white",
+        offscreenCtx.fill(),
+        offscreenCtx.globalCompositeOperation = "source-over",
+        offscreenCtx.drawImage(window.cross, this.canvasWidthL - this.offscreenCanvas.height / 2 + te.X * this.scale, this.graphOffset.Y * this.scale, scaledHeight, scaledHeight);
+        
+        // 将离屏画布内容缩放到固定大小的显示画布上
+        const displayCtx = this.ctx;
+        displayCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        displayCtx.drawImage(this.offscreenCanvas, 0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height, 0, 0, this.canvas.width, this.canvas.height);
     }
     bindEvent() {
         const e = (r,a)=>{
@@ -297,6 +330,7 @@ class lt {
             , 300))
         }
         document.querySelector("#save").addEventListener("click", ()=>this.saveImg()),
+        document.querySelector("#saveSvg").addEventListener("click", ()=>this.saveSvg()),
         document.querySelector("#copy").addEventListener("click", ()=>this.copyImg());
         const t = document.querySelector("#transparent");
         t.addEventListener("change", ()=>{
@@ -315,22 +349,32 @@ class lt {
             this.graphOffset.Y = parseInt(i.value),
             this.draw()
         }
+        );
+        const s = document.querySelector("#scale")
+          , c = document.querySelector("#scaleValue");
+        s.addEventListener("input", ()=>{
+            this.scale = parseFloat(s.value),
+            c.textContent = `${this.scale.toFixed(1)}x`,
+            this.updateResolutionDisplay(),
+            this.draw()
+        }
         )
     }
     setWidth() {
-        this.textWidthL = this.textMetricsL.width - (B * N + this.textMetricsL.fontBoundingBoxDescent) * H,
-        this.textWidthR = this.textMetricsR.width + (B * N - this.textMetricsR.fontBoundingBoxAscent) * H,
-        this.textWidthL + P > $ / 2 ? this.canvasWidthL = this.textWidthL + P : this.canvasWidthL = $ / 2,
-        this.textWidthR + P > $ / 2 ? this.canvasWidthR = this.textWidthR + P : this.canvasWidthR = $ / 2,
-        this.canvas.width = this.canvasWidthL + this.canvasWidthR
+        const scaledPaddingX = P * this.scale;
+        const scaledBaseWidthHalf = this.baseWidth / 2 * this.scale;
+        
+        this.textWidthL = this.textMetricsL.width - (B * this.baseHeight * this.scale + this.textMetricsL.fontBoundingBoxDescent) * H,
+        this.textWidthR = this.textMetricsR.width + (B * this.baseHeight * this.scale - this.textMetricsR.fontBoundingBoxAscent) * H,
+        this.textWidthL + scaledPaddingX > scaledBaseWidthHalf ? this.canvasWidthL = this.textWidthL + scaledPaddingX : this.canvasWidthL = scaledBaseWidthHalf,
+        this.textWidthR + scaledPaddingX > scaledBaseWidthHalf ? this.canvasWidthR = this.textWidthR + scaledPaddingX : this.canvasWidthR = scaledBaseWidthHalf,
+        // 更新离屏画布的宽度，显示画布宽度保持固定
+        this.offscreenCanvas.width = this.canvasWidthL + this.canvasWidthR
     }
     generateImg() {
-        let e;
-        return this.textWidthL + P < $ / 2 || this.textWidthR + P < $ / 2 ? (e = document.createElement("canvas"),
-        e.width = this.textWidthL + this.textWidthR + P * 2,
-        e.height = this.canvas.height,
-        e.getContext("2d").drawImage(this.canvas, $ / 2 - this.textWidthL - P, 0, this.textWidthL + this.textWidthR + P * 2, this.canvas.height, 0, 0, this.textWidthL + this.textWidthR + P * 2, this.canvas.height)) : e = this.canvas,
-        new Promise((t,n)=>{
+        // 使用离屏画布作为导出图片，确保导出的是高分辨率图片
+        let e = this.offscreenCanvas;
+        return new Promise((t,n)=>{
             e.toBlob(i=>{
                 i ? t(i) : n()
             }
@@ -349,6 +393,173 @@ class lt {
         }
         )
     }
+    async saveSvg() {
+        // 确保先重新绘制以获取最新的计算值
+        await this.draw();
+
+        // 获取关键参数
+        const width = this.offscreenCanvas.width;
+        const height = this.offscreenCanvas.height;
+        const scaledHeight = height;
+        const scaledFontSize = this.baseFontSize * this.scale;
+        const scaledLineWidth = 12 * this.scale;
+        const textY = height * B;
+
+        // halo 位置 - 使用 graphOffset（用户可调整）
+        const haloX = this.canvasWidthL - height / 2 + this.graphOffset.X * this.scale;
+        const haloY = this.graphOffset.Y * this.scale;
+
+        // cross 和 hollowPath 位置 - 使用固定的 te.X
+        const crossX = this.canvasWidthL - height / 2 + te.X * this.scale;
+        const crossY = this.graphOffset.Y * this.scale;
+
+        // 收集需要的字体
+        const allText = this.textL + this.textR;
+        const fontStyles = await this.generateFontStyles(allText);
+
+        // 字体定义
+        const fontFamily = "RoGSanSrfStd-Bd, GlowSansSC-Normal-Heavy_diff, -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif";
+
+        // 开始构建 SVG
+        let svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <defs>
+    <style>
+${fontStyles}
+      .text-left { font-family: ${fontFamily}; font-size: ${scaledFontSize}px; }
+      .text-right { font-family: ${fontFamily}; font-size: ${scaledFontSize}px; paint-order: stroke fill; }
+    </style>
+  </defs>
+`;
+
+        // 1. 背景
+        if (!this.transparentBg) {
+            svgContent += `  <rect width="${width}" height="${height}" fill="#ffffff"/>\n`;
+        }
+
+        // 2. 左侧蓝色文字（带斜切变换，右对齐）
+        svgContent += `  <text class="text-left" x="${this.canvasWidthL}" y="${textY}" fill="#128AFA" text-anchor="end" transform="matrix(1,0,${H},1,0,0)">${this.escapeXml(this.textL)}</text>\n`;
+
+        // 3. halo 图像
+        svgContent += `  <g transform="translate(${haloX},${haloY}) scale(${scaledHeight / 500})">
+    <path fill="#2B2B2B" d="M185 75.1c-23 2.2-39.8 9.9-45.4 20.7-3.2 6.2-3.8 10.8-2.1 17.4 3.1 11.7 9.9 22.3 22.5 34.9 17.7 17.8 39.9 32.9 71.9 49.1 16.8 8.5 19 9.1 19.1 5.6 0-.5-6.8-4.2-15-8.3-27.9-14-46.7-26.5-62.8-42-20-19.1-27.7-34.5-23.8-47.8 13.9-48 171.4-20.2 259 45.7 12.5 9.4 27.7 24.6 33.2 33.2 9.1 14.3 9.8 29.5 1.5 36.8-1.1 1.1-2.1 2.3-2.1 2.8 0 .4 3.7.8 8.3.8h8.3l1.8-3.7c6.5-13.7-1-32.2-21.3-52.3-46.5-46-145.2-86.9-224-93-14.9-1.1-16.7-1.1-29.1.1z"/>
+  </g>\n`;
+
+        // 4. 右侧文字（描边+填充，使用 paint-order 确保描边在后面）
+        svgContent += `  <text class="text-right" x="${this.canvasWidthL}" y="${textY}" fill="#2B2B2B" text-anchor="start" transform="matrix(1,0,${H},1,0,0)" stroke="#ffffff" stroke-width="${scaledLineWidth}" stroke-linejoin="round">${this.escapeXml(this.textR)}</text>\n`;
+
+        // 5. hollowPath 白色填充区域
+        let hollowPathD = `M ${crossX + z[0][0] / 500 * scaledHeight} ${crossY + z[0][1] / 500 * scaledHeight}`;
+        for (let i = 1; i < 4; i++) {
+            hollowPathD += ` L ${crossX + z[i][0] / 500 * scaledHeight} ${crossY + z[i][1] / 500 * scaledHeight}`;
+        }
+        hollowPathD += " Z";
+        svgContent += `  <path d="${hollowPathD}" fill="#ffffff"/>\n`;
+
+        // 6. cross 图像
+        svgContent += `  <g transform="translate(${crossX},${crossY}) scale(${scaledHeight / 500})">
+    <path fill="#128AFA" d="M366.5 28.5c.543.06.876.393 1 1a23718.046 23718.046 0 0 0-53 110.5 9965.6 9965.6 0 0 0 170 81A5795.598 5795.598 0 0 1 307 151.5l-141 234A11825.57 11825.57 0 0 1 293.5 146a29249.106 29249.106 0 0 0-207-96 193.841 193.841 0 0 1 21 7 22718.148 22718.148 0 0 0 193 76.5c2.128-.554 3.628-1.887 4.5-4 20.511-33.695 41.011-67.361 61.5-101Z"/>
+  </g>\n`;
+
+        // 关闭 SVG
+        svgContent += `</svg>`;
+
+        // 创建下载链接
+        const svgBlob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
+        const svgUrl = URL.createObjectURL(svgBlob);
+        const downloadLink = document.createElement("a");
+        downloadLink.href = svgUrl;
+        downloadLink.download = `${this.textL}${this.textR}_ba-style@nulla.top.svg`;
+        downloadLink.click();
+
+        // 释放URL对象
+        URL.revokeObjectURL(svgUrl);
+    }
+
+    // 根据文字内容生成所需的字体样式
+    async generateFontStyles(text) {
+        const charCodes = new Set();
+        for (const char of text) {
+            charCodes.add(char.charCodeAt(0));
+        }
+
+        // 字体文件映射规则
+        const fontRules = [
+            { range: [[0x00, 0x7F]], file: './fonts/RoGSans_sliced/RoGSanSrfStd-Bd_latin.woff2' },
+            { range: [[0x3000, 0x30FF]], file: './fonts/RoGSans_sliced/RoGSanSrfStd-Bd_kana.woff2' },
+            { range: [[0x80, 0x2FFF], [0x3100, 0x4DFF], [0xA000, 0x10FFFF]], file: './fonts/RoGSans_sliced/RoGSanSrfStd-Bd_other_mod.woff2' },
+        ];
+
+        const neededFonts = new Set();
+
+        for (const code of charCodes) {
+            for (const rule of fontRules) {
+                for (const [start, end] of rule.range) {
+                    if (code >= start && code <= end) {
+                        neededFonts.add(rule.file);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 生成字体样式
+        let fontStyles = '';
+        for (const fontFile of neededFonts) {
+            try {
+                const fontData = await this.getFontDataURI(fontFile);
+                if (fontData) {
+                    fontStyles += `      @font-face {
+        font-family: RoGSanSrfStd-Bd;
+        src: url(data:font/woff2;base64,${fontData}) format('woff2');
+        font-weight: normal;
+        font-style: normal;
+      }\n`;
+                }
+            } catch (e) {
+                console.error('Failed to load font:', fontFile, e);
+            }
+        }
+
+        return fontStyles;
+    }
+
+    // XML 特殊字符转义
+    escapeXml(str) {
+        return str.replace(/[<>&'"]/g, c => {
+            switch (c) {
+                case '<': return '&lt;';
+                case '>': return '&gt;';
+                case '&': return '&amp;';
+                case "'": return '&apos;';
+                case '"': return '&quot;';
+            }
+        });
+    }
+    
+    // 获取字体文件的Data URI
+    async getFontDataURI(fontPath) {
+        try {
+            const response = await fetch(fontPath);
+            const buffer = await response.arrayBuffer();
+            const base64 = this.arrayBufferToBase64(buffer);
+            return base64;
+        } catch (error) {
+            console.error('Failed to load font:', error);
+            return '';
+        }
+    }
+    
+    // 将ArrayBuffer转换为Base64
+    arrayBufferToBase64(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+    }
     async copyImg() {
         const e = await this.generateImg()
           , t = [new ClipboardItem({
@@ -361,6 +572,14 @@ class lt {
             setTimeout(()=>n.checked = !1, 2e3)
         }
         ).catch(n=>console.error("can't copy", n))
+    }
+    updateResolutionDisplay() {
+        const scaledWidth = Math.round(this.baseWidth * this.scale);
+        const scaledHeight = Math.round(this.baseHeight * this.scale);
+        const resolutionElement = document.querySelector("#resolutionValue");
+        if (resolutionElement) {
+            resolutionElement.textContent = `${scaledWidth}x${scaledHeight}`;
+        }
     }
 }
 const ut = "./img/halo.svg"
