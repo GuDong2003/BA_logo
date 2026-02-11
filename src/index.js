@@ -197,6 +197,7 @@ const Oe = {
     canvasHeight: 250,
     canvasWidth: 900,
     fontSize: 84,
+    subtitleFontSize: 36,
     textBaseLine: .68,
     horizontalTilt: -.4,
     paddingX: 10,
@@ -209,8 +210,13 @@ const Oe = {
   , at = async(s="A")=>{
     await document.fonts.load(`${Oe.fontSize}px RoGSanSrfStd-Bd, GlowSansSC-Normal-Heavy_diff`, s)
 }
-  , {canvasHeight: N, canvasWidth: $, fontSize: ot, horizontalTilt: H, textBaseLine: B, graphOffset: te, paddingX: P, hollowPath: z} = Oe
-  , ce = `${ot}px RoGSanSrfStd-Bd, GlowSansSC-Normal-Heavy_diff, apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif`;
+  , {canvasHeight: N, canvasWidth: $, fontSize: ot, subtitleFontSize: subtitleBaseSize, horizontalTilt: H, textBaseLine: B, graphOffset: te, paddingX: P, hollowPath: z} = Oe
+  , ce = `${ot}px RoGSanSrfStd-Bd, GlowSansSC-Normal-Heavy_diff, apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif`
+  , subtitleFontCss = `${subtitleBaseSize}px RoGSanSrfStd-Bd, GlowSansSC-Normal-Heavy_diff, apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif`
+  , HALO_PATH_D = "M185 75.1c-23 2.2-39.8 9.9-45.4 20.7-3.2 6.2-3.8 10.8-2.1 17.4 3.1 11.7 9.9 22.3 22.5 34.9 17.7 17.8 39.9 32.9 71.9 49.1 16.8 8.5 19 9.1 19.1 5.6 0-.5-6.8-4.2-15-8.3-27.9-14-46.7-26.5-62.8-42-20-19.1-27.7-34.5-23.8-47.8 13.9-48 171.4-20.2 259 45.7 12.5 9.4 27.7 24.6 33.2 33.2 9.1 14.3 9.8 29.5 1.5 36.8-1.1 1.1-2.1 2.3-2.1 2.8 0 .4 3.7.8 8.3.8h8.3l1.8-3.7c6.5-13.7-1-32.2-21.3-52.3-46.5-46-145.2-86.9-224-93-14.9-1.1-16.7-1.1-29.1.1z"
+  , CROSS_PATH_D = "M366.5 28.5c.543.06.876.393 1 1a23718.046 23718.046 0 0 0-53 110.5 9965.6 9965.6 0 0 0 170 81A5795.598 5795.598 0 0 1 307 151.5l-141 234A11825.57 11825.57 0 0 1 293.5 146a29249.106 29249.106 0 0 0-207-96 193.841 193.841 0 0 1 21 7 22718.148 22718.148 0 0 0 193 76.5c2.128-.554 3.628-1.887 4.5-4 20.511-33.695 41.011-67.361 61.5-101Z"
+  , HALO_PATH = new Path2D(HALO_PATH_D)
+  , CROSS_PATH = new Path2D(CROSS_PATH_D);
 class lt {
     constructor() {
         R(this, "canvas");
@@ -219,8 +225,11 @@ class lt {
         R(this, "offscreenCtx");
         R(this, "textL", "Blue");
         R(this, "textR", "Archive");
+        R(this, "subtitle", "ブルーアーカイブ");
+        R(this, "subtitleEnabled", !0);
         R(this, "textMetricsL", null);
         R(this, "textMetricsR", null);
+        R(this, "textMetricsST", null);
         R(this, "canvasWidthL", $ / 2);
         R(this, "canvasWidthR", $ / 2);
         R(this, "textWidthL", 0);
@@ -228,94 +237,148 @@ class lt {
         R(this, "graphOffset", te);
         R(this, "transparentBg", !1);
         R(this, "scale", 1);
+        R(this, "drawVersion", 0);
+        R(this, "activeDrawPromise", Promise.resolve());
         R(this, "baseHeight", N);
         R(this, "baseWidth", $);
         R(this, "baseFontSize", ot);
+        R(this, "baseSubtitleFontSize", subtitleBaseSize);
         this.canvas = document.querySelector("#canvas"),
         this.ctx = this.canvas.getContext("2d"),
         // 创建离屏画布用于高分辨率绘制
         this.offscreenCanvas = document.createElement("canvas"),
         this.offscreenCtx = this.offscreenCanvas.getContext("2d"),
         this.bindEvent(),
+        this.updatePreviewTransparency(),
         this.updateResolutionDisplay(),
-        this.draw()
+        this.requestDraw()
     }
-    async draw() {
+    requestDraw() {
+        const renderVersion = ++this.drawVersion;
+        const renderTask = this.draw(renderVersion).catch(err=>{
+            console.error("draw failed", err);
+        }
+        );
+        return this.activeDrawPromise = renderTask,
+        renderTask;
+    }
+    async draw(renderVersion) {
         const e = document.querySelector("#loading");
-        e.classList.remove("hidden");
-        
-        // 根据缩放比例计算实际参数，用于离屏画布绘制
+        e && e.classList.remove("hidden");
+        const activeSubtitle = this.getActiveSubtitleText();
+        const hasActiveSubtitle = activeSubtitle.trim().length > 0;
+
         const scaledHeight = Math.round(this.baseHeight * this.scale);
         const scaledWidth = Math.round(this.baseWidth * this.scale);
         const scaledFontSize = this.baseFontSize * this.scale;
+        const scaledSubtitleFontSize = this.baseSubtitleFontSize * this.scale;
         const scaledLineWidth = 12 * this.scale;
-        
-        // 保持显示画布固定大小
+
         this.canvas.height = this.baseHeight;
         this.canvas.width = this.baseWidth;
-        
-        // 更新离屏画布大小
+
         this.offscreenCanvas.height = scaledHeight;
         this.offscreenCanvas.width = scaledWidth;
-        
-        // 更新字体样式
+
         const scaledFont = `${scaledFontSize}px RoGSanSrfStd-Bd, GlowSansSC-Normal-Heavy_diff, apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif`;
-        
-        // 在离屏画布上绘制
+        const scaledSubtitleFont = `${scaledSubtitleFontSize}px RoGSanSrfStd-Bd, GlowSansSC-Normal-Heavy_diff, apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif`;
+
         const offscreenCtx = this.offscreenCtx;
-        await at(this.textL + this.textR),
-        e.classList.add("hidden"),
-        offscreenCtx.font = scaledFont,
-        this.textMetricsL = offscreenCtx.measureText(this.textL),
-        this.textMetricsR = offscreenCtx.measureText(this.textR),
-        this.setWidth(),
-        offscreenCtx.clearRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height),
+        await at(this.textL + this.textR + (hasActiveSubtitle ? activeSubtitle : ""));
+        if (renderVersion !== this.drawVersion) {
+            return;
+        }
+        e && e.classList.add("hidden");
+        offscreenCtx.font = scaledFont;
+        this.textMetricsL = offscreenCtx.measureText(this.textL);
+        this.textMetricsR = offscreenCtx.measureText(this.textR);
+        hasActiveSubtitle ? (offscreenCtx.font = scaledSubtitleFont,
+        this.textMetricsST = offscreenCtx.measureText(activeSubtitle)) : this.textMetricsST = null;
+        this.setWidth();
+        offscreenCtx.clearRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
         this.transparentBg || (offscreenCtx.fillStyle = "#fff",
-        offscreenCtx.fillRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height)),
-        offscreenCtx.font = scaledFont,
-        offscreenCtx.fillStyle = "#128AFA",
-        offscreenCtx.textAlign = "end",
-        offscreenCtx.setTransform(1, 0, H, 1, 0, 0),
-        offscreenCtx.fillText(this.textL, this.canvasWidthL, this.offscreenCanvas.height * B),
-        offscreenCtx.resetTransform(),
-        offscreenCtx.drawImage(window.halo, this.canvasWidthL - this.offscreenCanvas.height / 2 + this.graphOffset.X * this.scale, this.graphOffset.Y * this.scale, scaledHeight, scaledHeight),
-        offscreenCtx.fillStyle = "#2B2B2B",
-        offscreenCtx.textAlign = "start",
-        this.transparentBg && (offscreenCtx.globalCompositeOperation = "destination-out"),
-        offscreenCtx.strokeStyle = "white",
-        offscreenCtx.lineWidth = scaledLineWidth,
-        offscreenCtx.setTransform(1, 0, H, 1, 0, 0),
-        offscreenCtx.strokeText(this.textR, this.canvasWidthL, this.offscreenCanvas.height * B),
-        offscreenCtx.globalCompositeOperation = "source-over",
-        offscreenCtx.fillText(this.textR, this.canvasWidthL, this.offscreenCanvas.height * B),
+        offscreenCtx.fillRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height));
+        offscreenCtx.font = scaledFont;
+        offscreenCtx.fillStyle = "#128AFA";
+        offscreenCtx.textAlign = "end";
+        offscreenCtx.setTransform(1, 0, H, 1, 0, 0);
+        offscreenCtx.fillText(this.textL, this.canvasWidthL, this.offscreenCanvas.height * B);
         offscreenCtx.resetTransform();
+        const haloX = this.canvasWidthL - this.offscreenCanvas.height / 2 + this.graphOffset.X * this.scale;
+        const haloY = this.graphOffset.Y * this.scale;
+        this.drawVectorGlyph(offscreenCtx, HALO_PATH, haloX, haloY, scaledHeight, "#2B2B2B");
+        offscreenCtx.fillStyle = "#2B2B2B";
+        offscreenCtx.textAlign = "start";
+        this.transparentBg && (offscreenCtx.globalCompositeOperation = "destination-out");
+        offscreenCtx.strokeStyle = "white";
+        offscreenCtx.lineWidth = scaledLineWidth;
+        offscreenCtx.setTransform(1, 0, H, 1, 0, 0);
+        offscreenCtx.strokeText(this.textR, this.canvasWidthL, this.offscreenCanvas.height * B);
+        offscreenCtx.globalCompositeOperation = "source-over";
+        offscreenCtx.fillText(this.textR, this.canvasWidthL, this.offscreenCanvas.height * B);
+        if (hasActiveSubtitle) {
+            offscreenCtx.font = scaledSubtitleFont;
+            offscreenCtx.textAlign = "end";
+            const subtitleLayout = this.getSubtitleLayout(this.scale, this.canvasWidthL, this.textWidthR);
+            offscreenCtx.fillText(activeSubtitle, subtitleLayout.anchorX, subtitleLayout.baselineY);
+        }
+        offscreenCtx.resetTransform();
+        const crossX = this.canvasWidthL - this.offscreenCanvas.height / 2 + te.X * this.scale;
+        const crossY = this.graphOffset.Y * this.scale;
         const n = {
-            X: this.canvasWidthL - this.offscreenCanvas.height / 2 + te.X * this.scale,
-            Y: this.graphOffset.Y * this.scale
+            X: crossX,
+            Y: crossY
         };
-        offscreenCtx.beginPath(),
+        offscreenCtx.beginPath();
         offscreenCtx.moveTo(n.X + z[0][0] / 500 * scaledHeight, n.Y + z[0][1] / 500 * scaledHeight);
         for (let i = 1; i < 4; i++)
             offscreenCtx.lineTo(n.X + z[i][0] / 500 * scaledHeight, n.Y + z[i][1] / 500 * scaledHeight);
-        offscreenCtx.closePath(),
-        this.transparentBg && (offscreenCtx.globalCompositeOperation = "destination-out"),
-        offscreenCtx.fillStyle = "white",
-        offscreenCtx.fill(),
-        offscreenCtx.globalCompositeOperation = "source-over",
-        offscreenCtx.drawImage(window.cross, this.canvasWidthL - this.offscreenCanvas.height / 2 + te.X * this.scale, this.graphOffset.Y * this.scale, scaledHeight, scaledHeight);
-        
-        // 将离屏画布内容缩放到固定大小的显示画布上
+        offscreenCtx.closePath();
+        this.transparentBg && (offscreenCtx.globalCompositeOperation = "destination-out");
+        offscreenCtx.fillStyle = "white";
+        offscreenCtx.fill();
+        offscreenCtx.globalCompositeOperation = "source-over";
+        this.drawVectorGlyph(offscreenCtx, CROSS_PATH, crossX, crossY, scaledHeight, "#128AFA");
+
         const displayCtx = this.ctx;
+        const previewWidth = this.canvas.width;
+        const previewHeight = this.canvas.height;
+        const sourceWidth = this.offscreenCanvas.width;
+        const sourceHeight = this.offscreenCanvas.height;
+        const previewScale = Math.min(previewWidth / sourceWidth, previewHeight / sourceHeight);
+        const drawWidth = sourceWidth * previewScale;
+        const drawHeight = sourceHeight * previewScale;
+        const drawX = (previewWidth - drawWidth) / 2;
+        const drawY = (previewHeight - drawHeight) / 2;
+        if (renderVersion !== this.drawVersion)
+            return;
         displayCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        displayCtx.drawImage(this.offscreenCanvas, 0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height, 0, 0, this.canvas.width, this.canvas.height);
+        this.transparentBg || (displayCtx.fillStyle = "#fff",
+        displayCtx.fillRect(0, 0, previewWidth, previewHeight));
+        displayCtx.imageSmoothingEnabled = !0;
+        displayCtx.imageSmoothingQuality = "high";
+        displayCtx.drawImage(this.offscreenCanvas, 0, 0, sourceWidth, sourceHeight, drawX, drawY, drawWidth, drawHeight);
+    }
+    updatePreviewTransparency() {
+        const frame = this.canvas ? this.canvas.closest(".ba-canvas-frame") : null;
+        frame && frame.classList.toggle("ba-canvas-frame-transparent", this.transparentBg);
+    }
+    drawVectorGlyph(ctx, path, x, y, size, color) {
+        const scaleFactor = size / 500;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scaleFactor, scaleFactor);
+        ctx.fillStyle = color;
+        ctx.fill(path);
+        ctx.restore();
     }
     bindEvent() {
         const e = (r,a)=>{
             this[r] = a.value,
-            this.draw()
+            this.requestDraw()
         }
         ;
-        for (const r of ["textL", "textR"]) {
+        for (const r of ["textL", "textR", "subtitle"]) {
             const a = r
               , o = document.getElementById(a);
             o.addEventListener("compositionstart", ()=>o.setAttribute("composing", "")),
@@ -335,19 +398,20 @@ class lt {
         const t = document.querySelector("#transparent");
         t.addEventListener("change", ()=>{
             this.transparentBg = t.checked,
-            this.draw()
+            this.updatePreviewTransparency(),
+            this.requestDraw()
         }
         );
         const n = document.querySelector("#graphX")
           , i = document.querySelector("#graphY");
         n.addEventListener("input", ()=>{
             this.graphOffset.X = parseInt(n.value),
-            this.draw()
+            this.requestDraw()
         }
         ),
         i.addEventListener("input", ()=>{
             this.graphOffset.Y = parseInt(i.value),
-            this.draw()
+            this.requestDraw()
         }
         );
         const s = document.querySelector("#scale")
@@ -356,12 +420,18 @@ class lt {
             this.scale = parseFloat(s.value),
             c.textContent = `${this.scale.toFixed(1)}x`,
             this.updateResolutionDisplay(),
-            this.draw()
+            this.requestDraw()
+        }
+        );
+        const subtitleEnabledToggle = document.querySelector("#subtitleEnabled");
+        subtitleEnabledToggle && subtitleEnabledToggle.addEventListener("change", ()=>{
+            this.subtitleEnabled = subtitleEnabledToggle.checked,
+            this.requestDraw()
         }
         )
     }
     setWidth() {
-        const layout = this.calculateCanvasLayout(this.textMetricsL, this.textMetricsR, this.scale);
+        const layout = this.calculateCanvasLayout(this.textMetricsL, this.textMetricsR, this.textMetricsST, this.scale);
         this.textWidthL = layout.textWidthL,
         this.textWidthR = layout.textWidthR,
         this.canvasWidthL = layout.canvasWidthL,
@@ -369,7 +439,18 @@ class lt {
         // 更新离屏画布的宽度，显示画布宽度保持固定
         this.offscreenCanvas.width = Math.ceil(layout.width)
     }
-    calculateCanvasLayout(metricsL, metricsR, drawScale) {
+    getSubtitleLayout(drawScale, canvasWidthL, textWidthR) {
+        const subtitleFontSize = this.baseSubtitleFontSize * drawScale;
+        return {
+            fontSize: subtitleFontSize,
+            anchorX: canvasWidthL + textWidthR + subtitleFontSize,
+            baselineY: this.baseHeight * drawScale * B + subtitleFontSize + 5 * drawScale
+        };
+    }
+    getActiveSubtitleText() {
+        return this.subtitleEnabled ? this.subtitle : "";
+    }
+    calculateCanvasLayout(metricsL, metricsR, metricsST, drawScale) {
         const fallbackMetrics = {
             width: 0,
             fontBoundingBoxAscent: 0,
@@ -377,6 +458,7 @@ class lt {
         };
         const safeMetricsL = metricsL || fallbackMetrics;
         const safeMetricsR = metricsR || fallbackMetrics;
+        const safeMetricsST = metricsST || fallbackMetrics;
         const metricsLWidth = Number.isFinite(safeMetricsL.width) ? safeMetricsL.width : 0;
         const metricsRWidth = Number.isFinite(safeMetricsR.width) ? safeMetricsR.width : 0;
         const fontBoundingBoxDescent = Number.isFinite(safeMetricsL.fontBoundingBoxDescent) ? safeMetricsL.fontBoundingBoxDescent : 0;
@@ -398,19 +480,25 @@ class lt {
             pointX < minHollowX && (minHollowX = pointX),
             pointX > maxHollowX && (maxHollowX = pointX);
         }
+        const subtitleWidth = Number.isFinite(safeMetricsST.width) ? safeMetricsST.width : 0;
+        const subtitleAscent = Number.isFinite(safeMetricsST.fontBoundingBoxAscent) ? safeMetricsST.fontBoundingBoxAscent : 0;
+        const subtitleDescent = Number.isFinite(safeMetricsST.fontBoundingBoxDescent) ? safeMetricsST.fontBoundingBoxDescent : 0;
+        const subtitleLayout = this.getSubtitleLayout(drawScale, canvasWidthL, textWidthR);
+        const subtitleMinX = subtitleWidth > 0 ? subtitleLayout.anchorX - subtitleWidth + H * (subtitleLayout.baselineY + subtitleDescent) : Infinity;
+        const subtitleMaxX = subtitleWidth > 0 ? subtitleLayout.anchorX + H * (subtitleLayout.baselineY - subtitleAscent) : -Infinity;
         const initialWidth = canvasWidthL + canvasWidthR;
-        const contentLeft = Math.min(0, haloX, crossX, minHollowX);
-        const contentRight = Math.max(initialWidth, haloX + scaledHeight, crossX + scaledHeight, maxHollowX);
-        contentLeft < 0 && (canvasWidthL += -contentLeft);
-        const expandedWidth = canvasWidthL + canvasWidthR;
-        contentRight > initialWidth && (canvasWidthR += contentRight - initialWidth);
-        const finalWidth = canvasWidthL + canvasWidthR;
+        const contentLeft = Math.min(0, haloX, crossX, minHollowX, subtitleMinX);
+        const contentRight = Math.max(initialWidth, haloX + scaledHeight, crossX + scaledHeight, maxHollowX, subtitleMaxX);
+        const shiftLeft = contentLeft < 0 ? -contentLeft : 0;
+        const expandRight = contentRight > initialWidth ? contentRight - initialWidth : 0;
+        canvasWidthL += shiftLeft,
+        canvasWidthR += expandRight;
         return {
             textWidthL,
             textWidthR,
             canvasWidthL,
             canvasWidthR,
-            width: finalWidth > expandedWidth ? finalWidth : expandedWidth
+            width: canvasWidthL + canvasWidthR
         };
     }
     generateImg() {
@@ -424,7 +512,8 @@ class lt {
         }
         )
     }
-    saveImg() {
+    async saveImg() {
+        await this.activeDrawPromise;
         this.generateImg().then(e=>{
             const t = URL.createObjectURL(e)
               , n = document.createElement("a");
@@ -439,7 +528,10 @@ class lt {
         )
     }
     async saveSvg() {
-        await at(this.textL + this.textR);
+        await this.activeDrawPromise;
+        const activeSubtitle = this.getActiveSubtitleText();
+        const hasActiveSubtitle = activeSubtitle.trim().length > 0;
+        await at(this.textL + this.textR + (hasActiveSubtitle ? activeSubtitle : ""));
 
         const measureCanvas = document.createElement("canvas");
         const measureCtx = measureCanvas.getContext("2d");
@@ -450,21 +542,26 @@ class lt {
         };
         let metricsL = fallbackMetrics;
         let metricsR = fallbackMetrics;
+        let metricsST = fallbackMetrics;
         if (measureCtx) {
             measureCtx.font = ce;
             metricsL = measureCtx.measureText(this.textL);
             metricsR = measureCtx.measureText(this.textR);
+            hasActiveSubtitle && (measureCtx.font = subtitleFontCss,
+            metricsST = measureCtx.measureText(activeSubtitle));
         }
 
         const svgScale = 1;
         const height = this.baseHeight;
         const scaledHeight = this.baseHeight * svgScale;
         const scaledFontSize = this.baseFontSize * svgScale;
+        const scaledSubtitleFontSize = this.baseSubtitleFontSize * svgScale;
         const scaledLineWidth = 12 * svgScale;
         const textY = height * B;
-        const layout = this.calculateCanvasLayout(metricsL, metricsR, svgScale);
+        const layout = this.calculateCanvasLayout(metricsL, metricsR, metricsST, svgScale);
         const canvasWidthL = layout.canvasWidthL;
         const width = layout.width;
+        const subtitleLayout = this.getSubtitleLayout(svgScale, canvasWidthL, layout.textWidthR);
 
         // scale 不影响 SVG 导出，光环微调只按基础坐标系生效
         const haloX = canvasWidthL - height / 2 + this.graphOffset.X * svgScale;
@@ -475,7 +572,7 @@ class lt {
         const crossY = this.graphOffset.Y * svgScale;
 
         // 收集需要的字体
-        const allText = this.textL + this.textR;
+        const allText = this.textL + this.textR + (hasActiveSubtitle ? activeSubtitle : "");
         const fontStyles = await this.generateFontStyles(allText);
 
         // 字体定义
@@ -489,6 +586,7 @@ class lt {
 ${fontStyles}
       .text-left { font-family: ${fontFamily}; font-size: ${scaledFontSize}px; }
       .text-right { font-family: ${fontFamily}; font-size: ${scaledFontSize}px; paint-order: stroke fill; }
+      .text-subtitle { font-family: ${fontFamily}; font-size: ${scaledSubtitleFontSize}px; }
     </style>
   </defs>
 `;
@@ -503,11 +601,12 @@ ${fontStyles}
 
         // 3. halo 图像
         svgContent += `  <g transform="translate(${haloX},${haloY}) scale(${scaledHeight / 500})">
-    <path fill="#2B2B2B" d="M185 75.1c-23 2.2-39.8 9.9-45.4 20.7-3.2 6.2-3.8 10.8-2.1 17.4 3.1 11.7 9.9 22.3 22.5 34.9 17.7 17.8 39.9 32.9 71.9 49.1 16.8 8.5 19 9.1 19.1 5.6 0-.5-6.8-4.2-15-8.3-27.9-14-46.7-26.5-62.8-42-20-19.1-27.7-34.5-23.8-47.8 13.9-48 171.4-20.2 259 45.7 12.5 9.4 27.7 24.6 33.2 33.2 9.1 14.3 9.8 29.5 1.5 36.8-1.1 1.1-2.1 2.3-2.1 2.8 0 .4 3.7.8 8.3.8h8.3l1.8-3.7c6.5-13.7-1-32.2-21.3-52.3-46.5-46-145.2-86.9-224-93-14.9-1.1-16.7-1.1-29.1.1z"/>
+    <path fill="#2B2B2B" d="${HALO_PATH_D}"/>
   </g>\n`;
 
         // 4. 右侧文字（描边+填充，使用 paint-order 确保描边在后面）
         svgContent += `  <text class="text-right" x="${canvasWidthL}" y="${textY}" fill="#2B2B2B" text-anchor="start" transform="matrix(1,0,${H},1,0,0)" stroke="#ffffff" stroke-width="${scaledLineWidth}" stroke-linejoin="round">${this.escapeXml(this.textR)}</text>\n`;
+        hasActiveSubtitle && (svgContent += `  <text class="text-subtitle" x="${subtitleLayout.anchorX}" y="${subtitleLayout.baselineY}" fill="#2B2B2B" text-anchor="end" transform="matrix(1,0,${H},1,0,0)">${this.escapeXml(activeSubtitle)}</text>\n`);
 
         // 5. hollowPath 白色填充区域
         let hollowPathD = `M ${crossX + z[0][0] / 500 * scaledHeight} ${crossY + z[0][1] / 500 * scaledHeight}`;
@@ -519,7 +618,7 @@ ${fontStyles}
 
         // 6. cross 图像
         svgContent += `  <g transform="translate(${crossX},${crossY}) scale(${scaledHeight / 500})">
-    <path fill="#128AFA" d="M366.5 28.5c.543.06.876.393 1 1a23718.046 23718.046 0 0 0-53 110.5 9965.6 9965.6 0 0 0 170 81A5795.598 5795.598 0 0 1 307 151.5l-141 234A11825.57 11825.57 0 0 1 293.5 146a29249.106 29249.106 0 0 0-207-96 193.841 193.841 0 0 1 21 7 22718.148 22718.148 0 0 0 193 76.5c2.128-.554 3.628-1.887 4.5-4 20.511-33.695 41.011-67.361 61.5-101Z"/>
+    <path fill="#128AFA" d="${CROSS_PATH_D}"/>
   </g>\n`;
 
         // 关闭 SVG
@@ -798,7 +897,9 @@ ${fontStyles}
         return btoa(binary);
     }
     getSafeFileBaseName() {
-        const rawName = `${this.textL}${this.textR}`.trim() || "logo";
+        const mainTitle = `${this.textL}${this.textR}`.trim();
+        const activeSubtitle = this.getActiveSubtitleText().trim();
+        const rawName = [mainTitle, activeSubtitle].filter(Boolean).join("_") || "logo";
         const safeName = rawName
             .replace(/[\\/:*?"<>|]/g, "_")
             .replace(/\s+/g, "_")
@@ -806,6 +907,7 @@ ${fontStyles}
         return safeName || "logo";
     }
     async copyImg() {
+        await this.activeDrawPromise;
         const e = await this.generateImg()
           , t = [new ClipboardItem({
             "image/png": e
@@ -827,19 +929,7 @@ ${fontStyles}
         }
     }
 }
-const ut = "./img/halo.svg"
-  , ft = "./img/cross.svg"
-  , he = s=>new Promise((e,t)=>{
-    const n = new Image;
-    n.src = s,
-    n.onload = ()=>e(n),
-    n.onerror = t
-}
-)
-  , ct = async()=>{
-    await Promise.all([he(ut).then(s=>window.halo = s), he(ft).then(s=>window.cross = s)])
-}
-  , ht = {
+const ht = {
     type: "logger",
     log(s) {
         this.output("log", s)
@@ -2783,12 +2873,15 @@ const Et = "Blue Archive Logo Generator"
     title: Et,
     heading: Ft,
     save: At,
+    "save-svg": "Save SVG",
     copy: Wt,
     "copy-success": "Image copied",
     "transparent-background": "Transparent Background",
     advance: Vt,
     "halo-cross": "Halo & Cross position",
     resolution: qt,
+    subtitle: "Subtitle",
+    "enable-subtitle": "Enable subtitle",
     "font-title": "Used Fonts",
     "main-font": "Main font: ",
     "fallback-font": "Fallback font: ",
@@ -2807,12 +2900,15 @@ const Et = "Blue Archive Logo Generator"
     title: Kt,
     heading: Ut,
     save: Mt,
+    "save-svg": "保存 SVG",
     copy: Ht,
     "copy-success": "图片已成功复制",
     "transparent-background": "透明背景",
     advance: zt,
     "halo-cross": "光环位置微调",
     resolution: Xt,
+    subtitle: "副标题",
+    "enable-subtitle": "启用副标题",
     "font-title": "使用的字体",
     "main-font": "主要字体：",
     "fallback-font": "Fallback 字体：",
@@ -2837,8 +2933,7 @@ document.querySelectorAll(".i18n").forEach(s=>{
     s.textContent = It(e)
 }
 );
-(async function() {
-    await ct(),
-    new lt().draw()
+document.addEventListener("DOMContentLoaded", ()=>{
+    new lt();
 }
-)();
+);

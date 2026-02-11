@@ -2069,7 +2069,18 @@ h1 {
     box-shadow: none;
 }
 
+.ba-canvas-frame.ba-canvas-frame-transparent {
+    background-color: #f4f8fc;
+    background-image: linear-gradient(45deg,#e3ebf4 25%,transparent 25%),linear-gradient(-45deg,#e3ebf4 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e3ebf4 75%),linear-gradient(-45deg,transparent 75%,#e3ebf4 75%);
+    background-size: 16px 16px;
+    background-position: 0 0,0 8px,8px -8px,-8px 0;
+}
+
 .ba-canvas-frame #canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
     border-radius: 10px;
 }
 
@@ -2080,9 +2091,48 @@ h1 {
     grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto;
 }
 
+.ba-subtitle-row {
+    margin-top: .65rem;
+    display: grid;
+    align-items: center;
+    gap: .75rem;
+    grid-template-columns: 4.2rem minmax(0,1fr) auto;
+}
+
+.ba-subtitle-label {
+    font-size: .86rem;
+    font-weight: 600;
+    color: #446178;
+}
+
+.ba-subtitle-input {
+    width: 100%;
+    max-width: none;
+    min-height: 2.25rem;
+    padding-left: .7rem;
+    padding-right: .7rem;
+    box-shadow: none;
+}
+
+.ba-subtitle-toggle {
+    margin: 0;
+    padding: 0;
+    gap: .5rem;
+    align-self: center;
+}
+
+.ba-subtitle-toggle .label-text {
+    font-size: .86rem;
+    font-weight: 500;
+    color: #36516a;
+}
+
 .ba-main-input {
     width: 100%;
     max-width: none;
+    min-height: 2.5rem;
+    padding-left: .75rem;
+    padding-right: .75rem;
     box-shadow: none;
 }
 
@@ -2090,9 +2140,11 @@ h1 {
     margin: 0;
     padding: 0;
     gap: .5rem;
+    align-self: center;
 }
 
 .ba-transparent-toggle .label-text {
+    font-size: .86rem;
     font-weight: 500;
     color: #36516a;
 }
@@ -2256,10 +2308,22 @@ h1 {
 @media (max-width: 760px) {
     .ba-input-row {
         grid-template-columns: 1fr 1fr;
+        gap: .65rem;
     }
 
     .ba-transparent-toggle {
         grid-column: 1 / -1;
+        margin-top: .1rem;
+    }
+
+    .ba-subtitle-row {
+        grid-template-columns: 1fr;
+        gap: .55rem;
+    }
+
+    .ba-subtitle-toggle {
+        grid-column: auto;
+        justify-content: flex-start;
     }
 
     .advanced-grid {
@@ -2280,6 +2344,16 @@ h1 {
     }
 
     .ba-transparent-toggle {
+        grid-column: auto;
+        margin-top: 0;
+    }
+
+    .ba-subtitle-row {
+        grid-template-columns: 1fr;
+        gap: .55rem;
+    }
+
+    .ba-subtitle-toggle {
         grid-column: auto;
     }
 

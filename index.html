@@ -4,7 +4,7 @@
   <link rel="stylesheet" type="text/css" href="./fonts/RoGSans_sliced/font.css">
   <link rel="stylesheet" type="text/css" href="./fonts/GlowSans/font.css">
   <title class="i18n" data-i18n="title">蔚蓝档案标题生成器</title>
-  <script type="text/javascript" crossorigin="" src="./src/index.js"></script>
+  <script type="text/javascript" crossorigin="" defer src="./src/index.js"></script>
   <link rel="stylesheet" href="./src/index.css">
 </head>
 
@@ -17,7 +17,7 @@
     <section class="ba-stage-card">
       <div class="canvas-wrapper ba-canvas-wrapper flex place-content-center">
         <div class="relative my-auto ba-canvas-frame">
-          <canvas id="canvas" height="250" width="900" style="width: 100%; height: 100%;"></canvas>
+          <canvas id="canvas" height="250" width="900"></canvas>
           <div id="loading" class="absolute w-full h-full top-0 left-0 backdrop-blur-sm bg-slate-400/5 z-50 hidden">
             <div class="flex place-content-center h-full">
               <span class="loading loading-spinner loading-lg mx-auto"></span>
@@ -37,12 +37,20 @@
             <span class="i18n label-text text-base" data-i18n="transparent-background">透明背景</span>
           </label>
         </div>
+        <div class="ba-subtitle-row">
+          <label for="subtitle" class="i18n ba-subtitle-label" data-i18n="subtitle">副标题</label>
+          <input id="subtitle" type="text" placeholder="Type here" value="ブルーアーカイブ" class="input input-bordered input-sm input-primary ba-subtitle-input">
+          <label class="cursor-pointer label ba-subtitle-toggle">
+            <input type="checkbox" class="toggle toggle-primary" id="subtitleEnabled" checked>
+            <span class="i18n label-text text-base" data-i18n="enable-subtitle">启用副标题</span>
+          </label>
+        </div>
       </div>
 
       <div class="ba-advanced-card">
         <div class="mx-6 my-4 advanced-panel-wrap">
           <div class="collapse collapse-arrow bg-base-100 advanced-panel">
-            <input type="checkbox">
+            <input type="checkbox" checked>
             <div class="i18n collapse-title font-medium advanced-title" data-i18n="advance">高级设置</div>
             <div class="collapse-content py-6 advanced-content">
               <div class="advanced-grid">
