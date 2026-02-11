@@ -379,6 +379,7 @@ class lt {
     }
     applyThemeMode(mode) {
         const isDark = mode === "dark";
+        document.documentElement.classList.toggle("theme-dark", isDark);
         document.body.classList.toggle("theme-dark", isDark);
         const themeToggle = document.querySelector("#themeToggle");
         themeToggle && (themeToggle.checked = isDark);

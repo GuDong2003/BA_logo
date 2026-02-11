@@ -2019,6 +2019,14 @@ h1 {
 }
 
 /* Simple layout override */
+html {
+    background: #f5f7fb;
+}
+
+html.theme-dark {
+    background: #111a24;
+}
+
 .ba-bg-glow {
     display: none;
 }
