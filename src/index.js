@@ -239,6 +239,9 @@ class lt {
         R(this, "scale", 1);
         R(this, "drawVersion", 0);
         R(this, "activeDrawPromise", Promise.resolve());
+        R(this, "themePreference", "");
+        R(this, "themeMediaQuery", null);
+        R(this, "themeMediaListener", null);
         R(this, "baseHeight", N);
         R(this, "baseWidth", $);
         R(this, "baseFontSize", ot);
@@ -249,6 +252,7 @@ class lt {
         this.offscreenCanvas = document.createElement("canvas"),
         this.offscreenCtx = this.offscreenCanvas.getContext("2d"),
         this.bindEvent(),
+        this.initTheme(),
         this.updatePreviewTransparency(),
         this.updateResolutionDisplay(),
         this.requestDraw()
@@ -359,6 +363,38 @@ class lt {
         displayCtx.imageSmoothingQuality = "high";
         displayCtx.drawImage(this.offscreenCanvas, 0, 0, sourceWidth, sourceHeight, drawX, drawY, drawWidth, drawHeight);
     }
+    getStoredThemePreference() {
+        try {
+            const stored = localStorage.getItem("ba-theme");
+            return stored === "dark" || stored === "light" ? stored : "";
+        } catch {
+            return "";
+        }
+    }
+    getSystemThemeMode() {
+        return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    getEffectiveThemeMode() {
+        return this.themePreference || this.getSystemThemeMode();
+    }
+    applyThemeMode(mode) {
+        const isDark = mode === "dark";
+        document.body.classList.toggle("theme-dark", isDark);
+        const themeToggle = document.querySelector("#themeToggle");
+        themeToggle && (themeToggle.checked = isDark);
+    }
+    initTheme() {
+        this.themePreference = this.getStoredThemePreference();
+        this.applyThemeMode(this.getEffectiveThemeMode());
+        if (!window.matchMedia)
+            return;
+        this.themeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        this.themeMediaListener = ()=>{
+            this.themePreference || this.applyThemeMode(this.getEffectiveThemeMode());
+        }
+        ;
+        this.themeMediaQuery.addEventListener ? this.themeMediaQuery.addEventListener("change", this.themeMediaListener) : this.themeMediaQuery.addListener(this.themeMediaListener);
+    }
     updatePreviewTransparency() {
         const frame = this.canvas ? this.canvas.closest(".ba-canvas-frame") : null;
         frame && frame.classList.toggle("ba-canvas-frame-transparent", this.transparentBg);
@@ -428,7 +464,16 @@ class lt {
             this.subtitleEnabled = subtitleEnabledToggle.checked,
             this.requestDraw()
         }
-        )
+        );
+        const themeToggle = document.querySelector("#themeToggle");
+        themeToggle && themeToggle.addEventListener("change", ()=>{
+            this.themePreference = themeToggle.checked ? "dark" : "light";
+            try {
+                localStorage.setItem("ba-theme", this.themePreference);
+            } catch {}
+            this.applyThemeMode(this.themePreference);
+        }
+        );
     }
     setWidth() {
         const layout = this.calculateCanvasLayout(this.textMetricsL, this.textMetricsR, this.textMetricsST, this.scale);
@@ -2877,6 +2922,7 @@ const Et = "Blue Archive Logo Generator"
     copy: Wt,
     "copy-success": "Image copied",
     "transparent-background": "Transparent Background",
+    "dark-mode": "Dark Mode",
     advance: Vt,
     "halo-cross": "Halo & Cross position",
     resolution: qt,
@@ -2904,6 +2950,7 @@ const Et = "Blue Archive Logo Generator"
     copy: Ht,
     "copy-success": "图片已成功复制",
     "transparent-background": "透明背景",
+    "dark-mode": "暗色模式",
     advance: zt,
     "halo-cross": "光环位置微调",
     resolution: Xt,
