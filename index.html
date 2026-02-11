@@ -8,82 +8,119 @@
   <link rel="stylesheet" href="./src/index.css">
 </head>
 
-<body>
-  <header>
-    <h1 class="i18n mt-8 mb-4 text-center font-bold" data-i18n="heading">蔚蓝档案标题生成器</h1>
-  </header>
-  <section class="canvas-wrapper flex place-content-center">
-    <div class="relative my-auto" style="width: 900px; height: 250px; overflow: hidden; border: 1px solid #ccc; background-color: #f8fafc;">
-      <canvas id="canvas" height="250" width="900" style="width: 100%; height: 100%;"></canvas>
-      <div id="loading" class="absolute w-full h-full top-0 left-0 backdrop-blur-sm bg-slate-400/5 z-50 hidden">
-        <div class="flex place-content-center h-full">
-          <span class="loading loading-spinner loading-lg mx-auto"></span>
+<body class="ba-body">
+  <main class="ba-shell">
+    <header class="ba-header">
+      <h1 class="i18n ba-title" data-i18n="heading">蔚蓝档案标题生成器</h1>
+    </header>
+
+    <section class="ba-stage-card">
+      <div class="canvas-wrapper ba-canvas-wrapper flex place-content-center">
+        <div class="relative my-auto ba-canvas-frame">
+          <canvas id="canvas" height="250" width="900" style="width: 100%; height: 100%;"></canvas>
+          <div id="loading" class="absolute w-full h-full top-0 left-0 backdrop-blur-sm bg-slate-400/5 z-50 hidden">
+            <div class="flex place-content-center h-full">
+              <span class="loading loading-spinner loading-lg mx-auto"></span>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
-  <section class="w-full mx-auto my-6 flex flex-col" style="max-width: 900px;">
-    <div class="flex justify-center items-center my-4 px-2">
-      <input id="textL" type="text" placeholder="Type here" value="Blue" class="input input-bordered input-md input-primary w-40 max-w-[12rem] mr-8">
-      <input id="textR" type="text" placeholder="Type here" value="Archive" class="input input-bordered input-md input-secondary w-40 max-w-[12rem] ml-8">
-      <label class="cursor-pointer label flex items-center gap-2 whitespace-nowrap ml-4">
-        <input type="checkbox" class="toggle toggle-primary" id="transparent">
-        <span class="i18n label-text text-base" data-i18n="transparent-background">透明背景</span>
-      </label>
-    </div>
-    <div class="mx-6 my-4">
-      <div class="collapse collapse-arrow bg-base-100">
-        <input type="checkbox">
-        <div class="i18n collapse-title font-medium" data-i18n="advance">高级设置</div>
-        <div class="collapse-content py-6">
-          <div class="flex w-full">
-            <!-- 左侧：光环位置微调 (30%) -->
-            <div class="w-[30%] pr-6">
-              <div class="i18n font-medium mb-4" data-i18n="halo-cross">光环位置微调</div>
-              <div class="flex items-center gap-3 mb-3">
-                <span class="shrink-0">X</span>
-                <input type="number" placeholder="Type here" value="-15" class="input input-bordered input-sm input-primary flex-1 min-w-0" id="graphX">
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="shrink-0">Y</span>
-                <input type="number" placeholder="Type here" value="0" class="input input-bordered input-sm input-primary flex-1 min-w-0" id="graphY">
-              </div>
-            </div>
-            <!-- 右侧：分辨率调整 (70%) -->
-            <div class="w-[70%] pl-6">
-              <div class="i18n font-medium mb-4" data-i18n="resolution">分辨率调整</div>
-              <div class="flex items-center gap-4 mb-3">
-                <span class="w-20 shrink-0">缩放</span>
-                <input type="range" min="1" max="10" step="0.1" value="1" class="range range-primary flex-1 min-w-0" id="scale">
-                <span id="scaleValue" class="text-lg font-bold w-12 text-right shrink-0">1.0x</span>
-              </div>
-              <div class="flex items-center gap-4">
-                <span class="w-20 shrink-0">当前分辨率</span>
-                <span id="resolutionValue" class="text-lg font-bold">900x250</span>
+    </section>
+
+    <section class="ba-controls-shell">
+      <div class="ba-control-card">
+        <div class="ba-input-row">
+          <input id="textL" type="text" placeholder="Type here" value="Blue" class="input input-bordered input-md input-primary ba-main-input">
+          <input id="textR" type="text" placeholder="Type here" value="Archive" class="input input-bordered input-md input-secondary ba-main-input">
+          <label class="cursor-pointer label ba-transparent-toggle">
+            <input type="checkbox" class="toggle toggle-primary" id="transparent">
+            <span class="i18n label-text text-base" data-i18n="transparent-background">透明背景</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="ba-advanced-card">
+        <div class="mx-6 my-4 advanced-panel-wrap">
+          <div class="collapse collapse-arrow bg-base-100 advanced-panel">
+            <input type="checkbox">
+            <div class="i18n collapse-title font-medium advanced-title" data-i18n="advance">高级设置</div>
+            <div class="collapse-content py-6 advanced-content">
+              <div class="advanced-grid">
+                <section class="advanced-card">
+                  <div class="i18n advanced-card-title" data-i18n="halo-cross">光环位置微调</div>
+                  <div class="advanced-field-row">
+                    <label for="graphX" class="advanced-field-label">X</label>
+                    <input type="number" placeholder="Type here" value="-15" class="input input-bordered input-sm input-primary min-w-0 advanced-number" id="graphX">
+                  </div>
+                  <div class="advanced-field-row">
+                    <label for="graphY" class="advanced-field-label">Y</label>
+                    <input type="number" placeholder="Type here" value="0" class="input input-bordered input-sm input-primary min-w-0 advanced-number" id="graphY">
+                  </div>
+                </section>
+                <section class="advanced-card">
+                  <div class="i18n advanced-card-title" data-i18n="resolution">分辨率调整</div>
+                  <div class="advanced-field-row advanced-field-row-range">
+                    <label for="scale" class="advanced-field-label">缩放</label>
+                    <input type="range" min="1" max="10" step="0.1" value="1" class="range range-primary min-w-0 advanced-range" id="scale">
+                    <span id="scaleValue" class="advanced-pill">1.0x</span>
+                  </div>
+                  <div class="advanced-field-row advanced-resolution-row">
+                    <span class="advanced-field-label">当前分辨率</span>
+                    <span id="resolutionValue" class="advanced-resolution-badge">900x250</span>
+                  </div>
+                </section>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    <div class="flex justify-evenly my-4">
-      <span><button class="i18n btn btn-primary" id="save" data-i18n="save">保存 PNG</button></span>
-      <span><button class="i18n btn btn-primary" id="saveSvg" data-i18n="save-svg">保存 SVG</button></span>
-      <span><button class="i18n btn btn-primary" id="copy" data-i18n="copy">复制</button></span>
-    </div>
-    <label class="swap cursor-default">
-      <input type="checkbox" disabled="" id="message-switch">
-      <div class="alert alert-success swap-on">
-        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        <span class="i18n font-medium" data-i18n="copy-success">图片已成功复制</span>
+
+      <div class="ba-action-row">
+        <button class="i18n btn btn-primary ba-action-btn ba-action-btn-main" id="save" data-i18n="save">保存 PNG</button>
+        <button class="i18n btn btn-primary ba-action-btn" id="saveSvg" data-i18n="save-svg">保存 SVG</button>
+        <button class="i18n btn btn-primary ba-action-btn ba-action-btn-ghost" id="copy" data-i18n="copy">复制</button>
       </div>
-    </label>
-  </section>
-  <footer>
+
+      <label class="swap cursor-default ba-copy-alert">
+        <input type="checkbox" disabled="" id="message-switch">
+        <div class="alert alert-success swap-on">
+          <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span class="i18n font-medium" data-i18n="copy-success">图片已成功复制</span>
+        </div>
+      </label>
+    </section>
+  </main>
+  <footer class="ba-footer">
+    <section class="ba-footer-card">
+      <h2 class="i18n ba-footer-title" data-i18n="font-title">使用的字体</h2>
+      <ul class="ba-footer-list">
+        <li>
+          <span class="i18n" data-i18n="main-font">主要字体：</span>
+          <a href="https://www.morisawa.co.jp/fonts/specimen/1646" target="_blank" rel="noopener noreferrer">RoG2サンセリフStd B</a>
+        </li>
+        <li>
+          <span class="i18n" data-i18n="fallback-font">Fallback 字体：</span>
+          <a href="https://github.com/welai/glow-sans" target="_blank" rel="noopener noreferrer" class="i18n" data-i18n="glow">未来荧黑</a>
+        </li>
+      </ul>
+
+      <h2 class="i18n ba-footer-title" data-i18n="github-repo">原作者仓库</h2>
+      <a href="https://github.com/nulla2011/Bluearchive-logo" target="_blank" rel="noopener noreferrer" class="ba-footer-link">Bluearchive-logo</a>
+
+      <h2 class="ba-footer-title">署名</h2>
+      <ul class="ba-footer-list">
+        <li>
+          <span>一次改编：</span>
+          <a href="https://github.com/YujioNako" target="_blank" rel="noopener noreferrer">Yujio_Nako</a>
+        </li>
+        <li>
+          <span>二次改编：</span>
+          <a href="https://github.com/GuDong2003" target="_blank" rel="noopener noreferrer">GuDong2003</a>
+        </li>
+      </ul>
+
+    </section>
   </footer>
-  
-
-
 </body></html>

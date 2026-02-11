@@ -386,32 +386,57 @@ class lt {
         this.generateImg().then(e=>{
             const t = URL.createObjectURL(e)
               , n = document.createElement("a");
+            const scaledWidth = Math.round(this.baseWidth * this.scale);
+            const scaledHeight = Math.round(this.baseHeight * this.scale);
+            const safeBaseName = this.getSafeFileBaseName();
             n.href = t,
-            n.download = `${this.textL}${this.textR}_ba-style@nulla.top.png`,
+            n.download = `${safeBaseName}_${scaledWidth}x${scaledHeight}.png`,
             n.click(),
             URL.revokeObjectURL(t)
         }
         )
     }
     async saveSvg() {
-        // 确保先重新绘制以获取最新的计算值
-        await this.draw();
+        await at(this.textL + this.textR);
 
-        // 获取关键参数
-        const width = this.offscreenCanvas.width;
-        const height = this.offscreenCanvas.height;
-        const scaledHeight = height;
-        const scaledFontSize = this.baseFontSize * this.scale;
-        const scaledLineWidth = 12 * this.scale;
+        const measureCanvas = document.createElement("canvas");
+        const measureCtx = measureCanvas.getContext("2d");
+        const fallbackMetrics = {
+            width: 0,
+            fontBoundingBoxAscent: 0,
+            fontBoundingBoxDescent: 0
+        };
+        let metricsL = fallbackMetrics;
+        let metricsR = fallbackMetrics;
+        if (measureCtx) {
+            measureCtx.font = ce;
+            metricsL = measureCtx.measureText(this.textL);
+            metricsR = measureCtx.measureText(this.textR);
+        }
+
+        const svgScale = 1;
+        const height = this.baseHeight;
+        const scaledHeight = this.baseHeight * svgScale;
+        const scaledFontSize = this.baseFontSize * svgScale;
+        const scaledLineWidth = 12 * svgScale;
         const textY = height * B;
+        const scaledPaddingX = P * svgScale;
+        const scaledBaseWidthHalf = this.baseWidth / 2 * svgScale;
+        const fontBoundingBoxDescent = Number.isFinite(metricsL.fontBoundingBoxDescent) ? metricsL.fontBoundingBoxDescent : 0;
+        const fontBoundingBoxAscent = Number.isFinite(metricsR.fontBoundingBoxAscent) ? metricsR.fontBoundingBoxAscent : 0;
+        const textWidthL = metricsL.width - (B * this.baseHeight * svgScale + fontBoundingBoxDescent) * H;
+        const textWidthR = metricsR.width + (B * this.baseHeight * svgScale - fontBoundingBoxAscent) * H;
+        const canvasWidthL = textWidthL + scaledPaddingX > scaledBaseWidthHalf ? textWidthL + scaledPaddingX : scaledBaseWidthHalf;
+        const canvasWidthR = textWidthR + scaledPaddingX > scaledBaseWidthHalf ? textWidthR + scaledPaddingX : scaledBaseWidthHalf;
+        const width = canvasWidthL + canvasWidthR;
 
-        // halo 位置 - 使用 graphOffset（用户可调整）
-        const haloX = this.canvasWidthL - height / 2 + this.graphOffset.X * this.scale;
-        const haloY = this.graphOffset.Y * this.scale;
+        // scale 不影响 SVG 导出，光环微调只按基础坐标系生效
+        const haloX = canvasWidthL - height / 2 + this.graphOffset.X * svgScale;
+        const haloY = this.graphOffset.Y * svgScale;
 
-        // cross 和 hollowPath 位置 - 使用固定的 te.X
-        const crossX = this.canvasWidthL - height / 2 + te.X * this.scale;
-        const crossY = this.graphOffset.Y * this.scale;
+        // cross 和 hollowPath 使用固定 te.X，且不受分辨率缩放影响
+        const crossX = canvasWidthL - height / 2 + te.X * svgScale;
+        const crossY = this.graphOffset.Y * svgScale;
 
         // 收集需要的字体
         const allText = this.textL + this.textR;
@@ -438,7 +463,7 @@ ${fontStyles}
         }
 
         // 2. 左侧蓝色文字（带斜切变换，右对齐）
-        svgContent += `  <text class="text-left" x="${this.canvasWidthL}" y="${textY}" fill="#128AFA" text-anchor="end" transform="matrix(1,0,${H},1,0,0)">${this.escapeXml(this.textL)}</text>\n`;
+        svgContent += `  <text class="text-left" x="${canvasWidthL}" y="${textY}" fill="#128AFA" text-anchor="end" transform="matrix(1,0,${H},1,0,0)">${this.escapeXml(this.textL)}</text>\n`;
 
         // 3. halo 图像
         svgContent += `  <g transform="translate(${haloX},${haloY}) scale(${scaledHeight / 500})">
@@ -446,7 +471,7 @@ ${fontStyles}
   </g>\n`;
 
         // 4. 右侧文字（描边+填充，使用 paint-order 确保描边在后面）
-        svgContent += `  <text class="text-right" x="${this.canvasWidthL}" y="${textY}" fill="#2B2B2B" text-anchor="start" transform="matrix(1,0,${H},1,0,0)" stroke="#ffffff" stroke-width="${scaledLineWidth}" stroke-linejoin="round">${this.escapeXml(this.textR)}</text>\n`;
+        svgContent += `  <text class="text-right" x="${canvasWidthL}" y="${textY}" fill="#2B2B2B" text-anchor="start" transform="matrix(1,0,${H},1,0,0)" stroke="#ffffff" stroke-width="${scaledLineWidth}" stroke-linejoin="round">${this.escapeXml(this.textR)}</text>\n`;
 
         // 5. hollowPath 白色填充区域
         let hollowPathD = `M ${crossX + z[0][0] / 500 * scaledHeight} ${crossY + z[0][1] / 500 * scaledHeight}`;
@@ -468,8 +493,9 @@ ${fontStyles}
         const svgBlob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
         const svgUrl = URL.createObjectURL(svgBlob);
         const downloadLink = document.createElement("a");
+        const safeBaseName = this.getSafeFileBaseName();
         downloadLink.href = svgUrl;
-        downloadLink.download = `${this.textL}${this.textR}_ba-style@nulla.top.svg`;
+        downloadLink.download = `${safeBaseName}.svg`;
         downloadLink.click();
 
         // 释放URL对象
@@ -478,50 +504,216 @@ ${fontStyles}
 
     // 根据文字内容生成所需的字体样式
     async generateFontStyles(text) {
-        const charCodes = new Set();
-        for (const char of text) {
-            charCodes.add(char.charCodeAt(0));
-        }
-
-        // 字体文件映射规则
-        const fontRules = [
-            { range: [[0x00, 0x7F]], file: './fonts/RoGSans_sliced/RoGSanSrfStd-Bd_latin.woff2' },
-            { range: [[0x3000, 0x30FF]], file: './fonts/RoGSans_sliced/RoGSanSrfStd-Bd_kana.woff2' },
-            { range: [[0x80, 0x2FFF], [0x3100, 0x4DFF], [0xA000, 0x10FFFF]], file: './fonts/RoGSans_sliced/RoGSanSrfStd-Bd_other_mod.woff2' },
+        const charCodes = this.collectCodePoints(text);
+        const stylesheetPaths = [
+            "./fonts/RoGSans_sliced/font.css",
+            "./fonts/GlowSans/font.css"
         ];
+        const matchedRules = [];
 
-        const neededFonts = new Set();
-
-        for (const code of charCodes) {
-            for (const rule of fontRules) {
-                for (const [start, end] of rule.range) {
-                    if (code >= start && code <= end) {
-                        neededFonts.add(rule.file);
-                        break;
-                    }
+        for (const stylesheetPath of stylesheetPaths) {
+            const rules = await this.getFontFaceRules(stylesheetPath);
+            for (const rule of rules) {
+                if (this.fontRuleMatches(rule.unicodeRanges, charCodes)) {
+                    matchedRules.push(rule);
                 }
             }
         }
 
-        // 生成字体样式
-        let fontStyles = '';
-        for (const fontFile of neededFonts) {
+        const uniqueRules = new Map();
+        for (const rule of matchedRules) {
+            const key = `${rule.fontFamily}|${rule.srcPath}|${rule.unicodeRange}`;
+            if (!uniqueRules.has(key)) {
+                uniqueRules.set(key, rule);
+            }
+        }
+
+        let fontStyles = "";
+        for (const rule of uniqueRules.values()) {
             try {
-                const fontData = await this.getFontDataURI(fontFile);
-                if (fontData) {
-                    fontStyles += `      @font-face {
-        font-family: RoGSanSrfStd-Bd;
-        src: url(data:font/woff2;base64,${fontData}) format('woff2');
-        font-weight: normal;
-        font-style: normal;
-      }\n`;
+                const fontData = await this.getFontDataURI(rule.srcPath);
+                if (!fontData) {
+                    continue;
                 }
+                const format = rule.format || this.getFontFormatByPath(rule.srcPath) || "woff2";
+                const mimeType = this.getFontMimeTypeByFormat(format);
+                fontStyles += `      @font-face {
+        font-family: ${rule.fontFamily};
+        src: url(data:${mimeType};base64,${fontData}) format('${format}');
+        font-weight: ${rule.fontWeight || "normal"};
+        font-style: ${rule.fontStyle || "normal"};`;
+                if (rule.unicodeRange) {
+                    fontStyles += `
+        unicode-range: ${rule.unicodeRange};`;
+                }
+                fontStyles += `
+      }\n`;
             } catch (e) {
-                console.error('Failed to load font:', fontFile, e);
+                console.error("Failed to build font-face rule:", rule.srcPath, e);
             }
         }
 
         return fontStyles;
+    }
+
+    collectCodePoints(text) {
+        const charCodes = new Set();
+        for (const char of text) {
+            charCodes.add(char.codePointAt(0));
+        }
+        return charCodes;
+    }
+
+    async getFontFaceRules(stylesheetPath) {
+        this.fontFaceRuleCache || (this.fontFaceRuleCache = new Map());
+        if (this.fontFaceRuleCache.has(stylesheetPath)) {
+            return this.fontFaceRuleCache.get(stylesheetPath);
+        }
+        try {
+            const response = await fetch(stylesheetPath);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const cssText = await response.text();
+            const rules = this.parseFontFaceRules(cssText, stylesheetPath);
+            this.fontFaceRuleCache.set(stylesheetPath, rules);
+            return rules;
+        } catch (error) {
+            console.error("Failed to load font stylesheet:", stylesheetPath, error);
+            this.fontFaceRuleCache.set(stylesheetPath, []);
+            return [];
+        }
+    }
+
+    parseFontFaceRules(cssText, stylesheetPath) {
+        const rules = [];
+        const blockRegex = /@font-face\s*{([\s\S]*?)}/gi;
+        let blockMatch;
+        while ((blockMatch = blockRegex.exec(cssText)) !== null) {
+            const block = blockMatch[1];
+            const fontFamily = this.readCssProperty(block, "font-family");
+            const srcProp = this.readCssProperty(block, "src");
+            if (!fontFamily || !srcProp) {
+                continue;
+            }
+            const srcMatch = /url\((['"]?)([^'")]+)\1\)\s*(?:format\((['"]?)([^'")]+)\3\))?/i.exec(srcProp);
+            if (!srcMatch) {
+                continue;
+            }
+            const unicodeRange = this.readCssProperty(block, "unicode-range");
+            rules.push({
+                fontFamily,
+                srcPath: this.resolveCssAssetPath(stylesheetPath, srcMatch[2]),
+                format: srcMatch[4] ? srcMatch[4].toLowerCase() : "",
+                fontWeight: this.readCssProperty(block, "font-weight") || "normal",
+                fontStyle: this.readCssProperty(block, "font-style") || "normal",
+                unicodeRange: unicodeRange || "",
+                unicodeRanges: this.parseUnicodeRanges(unicodeRange || "")
+            });
+        }
+        return rules;
+    }
+
+    readCssProperty(cssBlock, propertyName) {
+        const match = new RegExp(`${propertyName}\\s*:\\s*([^;]+);`, "i").exec(cssBlock);
+        return match ? match[1].trim() : "";
+    }
+
+    resolveCssAssetPath(stylesheetPath, assetPath) {
+        if (/^(?:https?:|data:|blob:|\/)/i.test(assetPath)) {
+            return assetPath;
+        }
+        const baseParts = stylesheetPath.split("/");
+        baseParts.pop();
+        for (const part of assetPath.split("/")) {
+            if (!part || part === ".") {
+                continue;
+            }
+            if (part === "..") {
+                baseParts.length && baseParts.pop();
+                continue;
+            }
+            baseParts.push(part);
+        }
+        return baseParts.join("/");
+    }
+
+    parseUnicodeRanges(unicodeRange) {
+        const ranges = [];
+        for (const segment of unicodeRange.split(",")) {
+            let token = segment.trim();
+            if (!token || !/^U\+/i.test(token)) {
+                continue;
+            }
+            token = token.slice(2);
+            if (token.includes("?")) {
+                const startHex = token.replace(/\?/g, "0");
+                const endHex = token.replace(/\?/g, "F");
+                const start = Number.parseInt(startHex, 16);
+                const end = Number.parseInt(endHex, 16);
+                if (!Number.isNaN(start) && !Number.isNaN(end)) {
+                    ranges.push([Math.min(start, end), Math.max(start, end)]);
+                }
+                continue;
+            }
+            if (token.includes("-")) {
+                const [startHex, endHexRaw] = token.split("-");
+                const endHex = endHexRaw ? endHexRaw.replace(/^U\+/i, "") : "";
+                const start = Number.parseInt(startHex, 16);
+                const end = Number.parseInt(endHex, 16);
+                if (!Number.isNaN(start) && !Number.isNaN(end)) {
+                    ranges.push([Math.min(start, end), Math.max(start, end)]);
+                }
+                continue;
+            }
+            const value = Number.parseInt(token, 16);
+            if (!Number.isNaN(value)) {
+                ranges.push([value, value]);
+            }
+        }
+        return ranges;
+    }
+
+    fontRuleMatches(ranges, charCodes) {
+        if (!charCodes.size) {
+            return !1;
+        }
+        if (!ranges.length) {
+            return !0;
+        }
+        for (const code of charCodes) {
+            for (const [start, end] of ranges) {
+                if (code >= start && code <= end) {
+                    return !0;
+                }
+            }
+        }
+        return !1;
+    }
+
+    getFontFormatByPath(fontPath) {
+        const cleanPath = fontPath.split("?")[0].split("#")[0];
+        const ext = cleanPath.includes(".") ? cleanPath.split(".").pop().toLowerCase() : "";
+        if (ext === "woff2" || ext === "woff" || ext === "ttf" || ext === "otf") {
+            return ext;
+        }
+        return "";
+    }
+
+    getFontMimeTypeByFormat(format) {
+        if (format === "woff2") {
+            return "font/woff2";
+        }
+        if (format === "woff") {
+            return "font/woff";
+        }
+        if (format === "ttf") {
+            return "font/ttf";
+        }
+        if (format === "otf") {
+            return "font/otf";
+        }
+        return "font/woff2";
     }
 
     // XML 特殊字符转义
@@ -539,14 +731,23 @@ ${fontStyles}
     
     // 获取字体文件的Data URI
     async getFontDataURI(fontPath) {
+        this.fontDataCache || (this.fontDataCache = new Map());
+        if (this.fontDataCache.has(fontPath)) {
+            return this.fontDataCache.get(fontPath);
+        }
         try {
             const response = await fetch(fontPath);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const buffer = await response.arrayBuffer();
             const base64 = this.arrayBufferToBase64(buffer);
+            this.fontDataCache.set(fontPath, base64);
             return base64;
         } catch (error) {
-            console.error('Failed to load font:', error);
-            return '';
+            console.error("Failed to load font:", fontPath, error);
+            this.fontDataCache.set(fontPath, "");
+            return "";
         }
     }
     
@@ -559,6 +760,14 @@ ${fontStyles}
             binary += String.fromCharCode(bytes[i]);
         }
         return btoa(binary);
+    }
+    getSafeFileBaseName() {
+        const rawName = `${this.textL}${this.textR}`.trim() || "logo";
+        const safeName = rawName
+            .replace(/[\\/:*?"<>|]/g, "_")
+            .replace(/\s+/g, "_")
+            .slice(0, 120);
+        return safeName || "logo";
     }
     async copyImg() {
         const e = await this.generateImg()
@@ -2532,6 +2741,7 @@ const Et = "Blue Archive Logo Generator"
   , At = "SAVE"
   , Wt = "COPY"
   , Vt = "Advance settings"
+  , qt = "Resolution"
   , Bt = "Wêlai Glow Sans"
   , Dt = {
     title: Et,
@@ -2542,6 +2752,7 @@ const Et = "Blue Archive Logo Generator"
     "transparent-background": "Transparent Background",
     advance: Vt,
     "halo-cross": "Halo & Cross position",
+    resolution: qt,
     "font-title": "Used Fonts",
     "main-font": "Main font: ",
     "fallback-font": "Fallback font: ",
@@ -2554,6 +2765,7 @@ const Et = "Blue Archive Logo Generator"
   , Mt = "保存"
   , Ht = "复制"
   , zt = "高级设置"
+  , Xt = "分辨率调整"
   , Jt = "未来荧黑"
   , Yt = {
     title: Kt,
@@ -2564,11 +2776,12 @@ const Et = "Blue Archive Logo Generator"
     "transparent-background": "透明背景",
     advance: zt,
     "halo-cross": "光环位置微调",
+    resolution: Xt,
     "font-title": "使用的字体",
     "main-font": "主要字体：",
     "fallback-font": "Fallback 字体：",
     glow: Jt,
-    "github-repo": "GitHub 仓库",
+    "github-repo": "原作者仓库",
     "adapter-repo": "改编者"
 }
   , Gt = ["zh", "zh-CN", "zh-cn"].includes(navigator.language) ? "zh" : "en";
