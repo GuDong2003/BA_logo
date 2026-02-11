@@ -226,7 +226,7 @@ class lt {
         R(this, "textL", "Blue");
         R(this, "textR", "Archive");
         R(this, "subtitle", "ブルーアーカイブ");
-        R(this, "subtitleEnabled", !0);
+        R(this, "subtitleEnabled", !1);
         R(this, "textMetricsL", null);
         R(this, "textMetricsR", null);
         R(this, "textMetricsST", null);
