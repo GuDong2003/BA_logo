@@ -361,15 +361,57 @@ class lt {
         )
     }
     setWidth() {
-        const scaledPaddingX = P * this.scale;
-        const scaledBaseWidthHalf = this.baseWidth / 2 * this.scale;
-        
-        this.textWidthL = this.textMetricsL.width - (B * this.baseHeight * this.scale + this.textMetricsL.fontBoundingBoxDescent) * H,
-        this.textWidthR = this.textMetricsR.width + (B * this.baseHeight * this.scale - this.textMetricsR.fontBoundingBoxAscent) * H,
-        this.textWidthL + scaledPaddingX > scaledBaseWidthHalf ? this.canvasWidthL = this.textWidthL + scaledPaddingX : this.canvasWidthL = scaledBaseWidthHalf,
-        this.textWidthR + scaledPaddingX > scaledBaseWidthHalf ? this.canvasWidthR = this.textWidthR + scaledPaddingX : this.canvasWidthR = scaledBaseWidthHalf,
+        const layout = this.calculateCanvasLayout(this.textMetricsL, this.textMetricsR, this.scale);
+        this.textWidthL = layout.textWidthL,
+        this.textWidthR = layout.textWidthR,
+        this.canvasWidthL = layout.canvasWidthL,
+        this.canvasWidthR = layout.canvasWidthR,
         // 更新离屏画布的宽度，显示画布宽度保持固定
-        this.offscreenCanvas.width = this.canvasWidthL + this.canvasWidthR
+        this.offscreenCanvas.width = Math.ceil(layout.width)
+    }
+    calculateCanvasLayout(metricsL, metricsR, drawScale) {
+        const fallbackMetrics = {
+            width: 0,
+            fontBoundingBoxAscent: 0,
+            fontBoundingBoxDescent: 0
+        };
+        const safeMetricsL = metricsL || fallbackMetrics;
+        const safeMetricsR = metricsR || fallbackMetrics;
+        const metricsLWidth = Number.isFinite(safeMetricsL.width) ? safeMetricsL.width : 0;
+        const metricsRWidth = Number.isFinite(safeMetricsR.width) ? safeMetricsR.width : 0;
+        const fontBoundingBoxDescent = Number.isFinite(safeMetricsL.fontBoundingBoxDescent) ? safeMetricsL.fontBoundingBoxDescent : 0;
+        const fontBoundingBoxAscent = Number.isFinite(safeMetricsR.fontBoundingBoxAscent) ? safeMetricsR.fontBoundingBoxAscent : 0;
+        const scaledPaddingX = P * drawScale;
+        const scaledBaseWidthHalf = this.baseWidth / 2 * drawScale;
+        const textWidthL = metricsLWidth - (B * this.baseHeight * drawScale + fontBoundingBoxDescent) * H;
+        const textWidthR = metricsRWidth + (B * this.baseHeight * drawScale - fontBoundingBoxAscent) * H;
+        let canvasWidthL = textWidthL + scaledPaddingX > scaledBaseWidthHalf ? textWidthL + scaledPaddingX : scaledBaseWidthHalf;
+        let canvasWidthR = textWidthR + scaledPaddingX > scaledBaseWidthHalf ? textWidthR + scaledPaddingX : scaledBaseWidthHalf;
+        const scaledHeight = this.baseHeight * drawScale;
+        const anchorX = canvasWidthL;
+        const haloX = anchorX - scaledHeight / 2 + this.graphOffset.X * drawScale;
+        const crossX = anchorX - scaledHeight / 2 + te.X * drawScale;
+        let minHollowX = Infinity;
+        let maxHollowX = -Infinity;
+        for (const point of z) {
+            const pointX = crossX + point[0] / 500 * scaledHeight;
+            pointX < minHollowX && (minHollowX = pointX),
+            pointX > maxHollowX && (maxHollowX = pointX);
+        }
+        const initialWidth = canvasWidthL + canvasWidthR;
+        const contentLeft = Math.min(0, haloX, crossX, minHollowX);
+        const contentRight = Math.max(initialWidth, haloX + scaledHeight, crossX + scaledHeight, maxHollowX);
+        contentLeft < 0 && (canvasWidthL += -contentLeft);
+        const expandedWidth = canvasWidthL + canvasWidthR;
+        contentRight > initialWidth && (canvasWidthR += contentRight - initialWidth);
+        const finalWidth = canvasWidthL + canvasWidthR;
+        return {
+            textWidthL,
+            textWidthR,
+            canvasWidthL,
+            canvasWidthR,
+            width: finalWidth > expandedWidth ? finalWidth : expandedWidth
+        };
     }
     generateImg() {
         // 使用离屏画布作为导出图片，确保导出的是高分辨率图片
@@ -420,15 +462,9 @@ class lt {
         const scaledFontSize = this.baseFontSize * svgScale;
         const scaledLineWidth = 12 * svgScale;
         const textY = height * B;
-        const scaledPaddingX = P * svgScale;
-        const scaledBaseWidthHalf = this.baseWidth / 2 * svgScale;
-        const fontBoundingBoxDescent = Number.isFinite(metricsL.fontBoundingBoxDescent) ? metricsL.fontBoundingBoxDescent : 0;
-        const fontBoundingBoxAscent = Number.isFinite(metricsR.fontBoundingBoxAscent) ? metricsR.fontBoundingBoxAscent : 0;
-        const textWidthL = metricsL.width - (B * this.baseHeight * svgScale + fontBoundingBoxDescent) * H;
-        const textWidthR = metricsR.width + (B * this.baseHeight * svgScale - fontBoundingBoxAscent) * H;
-        const canvasWidthL = textWidthL + scaledPaddingX > scaledBaseWidthHalf ? textWidthL + scaledPaddingX : scaledBaseWidthHalf;
-        const canvasWidthR = textWidthR + scaledPaddingX > scaledBaseWidthHalf ? textWidthR + scaledPaddingX : scaledBaseWidthHalf;
-        const width = canvasWidthL + canvasWidthR;
+        const layout = this.calculateCanvasLayout(metricsL, metricsR, svgScale);
+        const canvasWidthL = layout.canvasWidthL;
+        const width = layout.width;
 
         // scale 不影响 SVG 导出，光环微调只按基础坐标系生效
         const haloX = canvasWidthL - height / 2 + this.graphOffset.X * svgScale;
